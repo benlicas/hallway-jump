@@ -1,0 +1,12 @@
+# Windows / Mac junk
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+
+# Logs / temp
+*.log
+node_modules/

@@ -1,0 +1,6 @@
+# Files that are for development only (not needed on the live site)
+tests/
+serve.py
+start.bat
+DESIGN.md
+README.md
