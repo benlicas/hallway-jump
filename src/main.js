@@ -1,5 +1,5 @@
 import {
-  W, H, VIEW_EXTRA, FLOOR_Y, START_X, TAKEOFF_X, MAN, CHARACTERS, bodyOf, stompSpotFor,
+  W, H, VIEW_EXTRA, SHOW_ROTATE_PROMPT, FLOOR_Y, START_X, TAKEOFF_X, MAN, CHARACTERS, bodyOf, stompSpotFor,
   SPEED_METER_PERIOD, ANGLE_METER_PERIOD, POINTS_PER_CLEAR, STREAK_BONUS,
   PHOTOBOMB,
 } from './config.js';
@@ -17,6 +17,7 @@ import * as photobomb from './photobomb.js';
 // The game stage is 960x540. It's scaled to the screen height, and on wider
 // screens the hallway extends left/right (up to VIEW_EXTRA) to fill the width.
 const canvas = document.getElementById('game');
+if (!SHOW_ROTATE_PROMPT) document.body.classList.add('no-rotate-prompt');
 const ctx = canvas.getContext('2d');
 let scale = 1;
 const view = { left: 0, right: W, offset: 0, padL: 0, padR: 0 };  // visible stage x-range

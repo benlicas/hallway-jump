@@ -70,3 +70,7 @@ canvas {
   #rotate { display: flex; }
   canvas { visibility: hidden; }
 }
+
+/* Rotate prompt turned off in config.js (SHOW_ROTATE_PROMPT = false). */
+body.no-rotate-prompt #rotate { display: none !important; }
+body.no-rotate-prompt canvas { visibility: visible !important; }

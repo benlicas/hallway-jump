@@ -3,6 +3,10 @@
 // Logical game size (the canvas is scaled to fit the screen).
 export const W = 960;
 export const H = 540;
+// Show the "Rotate your phone" screen when a phone is held upright?
+// false = never show it (the game just shrinks to fit in portrait).
+export const SHOW_ROTATE_PROMPT = false;
+
 // On screens wider than 16:9 the hallway is drawn this much further on each
 // side so the game fills the whole phone width (gameplay positions don't change).
 export const VIEW_EXTRA = 340;
