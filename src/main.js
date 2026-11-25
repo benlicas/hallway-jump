@@ -12,6 +12,7 @@ import { unlock, sfx } from './audio.js';
 import { getHighScore, submitScore } from './scores.js';
 import { tryLockLandscape } from './orientation.js';
 import * as photobomb from './photobomb.js';
+import * as rewards from './rewards.js';
 
 // ---------- canvas setup ----------
 // The game stage is 960x540. It's scaled to the screen height, and on wider
@@ -108,8 +109,11 @@ function nextJump() {
 const CARDS = CHARACTERS.map((ch, i) => ({ x: 52 + i * 220, y: 120, w: 196, h: 330, ch }));
 // Game-over and initials panels sit on the right so Bob stays visible.
 const SIDE = { x: 668, w: 272, cx: 668 + 136 };
-const BTN_RETRY = { x: SIDE.x + 20, y: 300, w: SIDE.w - 40, h: 60 };
-const BTN_CHARS = { x: SIDE.x + 30, y: 380, w: SIDE.w - 60, h: 46 };
+const BTN_RETRY = { x: SIDE.x + 20, y: 290, w: SIDE.w - 40, h: 56 };
+const BTN_CHARS = { x: SIDE.x + 30, y: 356, w: SIDE.w - 60, h: 42 };
+const BTN_BONUS = { x: SIDE.x + 30, y: 410, w: SIDE.w - 60, h: 42 };
+// 🎬 badge in the top-right corner of each character card
+const badgeOf = (c) => ({ x: c.x + c.w - 54, y: c.y + 10, w: 44, h: 36 });
 const INIT_X = [SIDE.cx - 80, SIDE.cx, SIDE.cx + 80];
 const BTN_UP = INIT_X.map(x => ({ x: x - 33, y: 150, w: 66, h: 52 }));
 const BTN_DOWN = INIT_X.map(x => ({ x: x - 33, y: 292, w: 66, h: 52 }));
@@ -130,6 +134,7 @@ canvas.addEventListener('pointerdown', (e) => {
   onTap(toLogical(e));
 });
 window.addEventListener('keydown', (e) => {
+  if (rewards.isOpen()) return;
   if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); unlock(); onTap({ x: W / 2, y: H / 2, key: true }); }
 });
 
@@ -141,7 +146,10 @@ function onTap(p) {
       return;
     case 'select': {
       const card = CARDS.find(c => inside(p, c));
-      if (card) { sfx.tap(); G.char = card.ch; startRun(); }
+      if (!card) return;
+      sfx.tap();
+      if (rewards.isUnlocked(card.ch) && inside(p, badgeOf(card))) { rewards.play(card.ch); return; }
+      G.char = card.ch; startRun();
       return;
     }
     case 'play': return onPlayTap();
@@ -149,6 +157,7 @@ function onTap(p) {
     case 'over':
       if (p.key || inside(p, BTN_RETRY)) { sfx.tap(); startRun(); }
       else if (inside(p, BTN_CHARS)) { sfx.tap(); G.screen = 'select'; }
+      else if (rewards.isUnlocked(G.char) && inside(p, BTN_BONUS)) { sfx.tap(); rewards.play(G.char); }
       return;
   }
 }
@@ -196,6 +205,7 @@ function update(dt) {
   G.t += dt;
   G.clock += dt;
   photobomb.update(dt);
+  if (G.toast) { G.toast.t += dt; if (G.toast.t > 3.2) G.toast = null; }
   if (G.shake > 0) G.shake = Math.max(0, G.shake - dt);
   if (G.screen !== 'play') return;
 
@@ -245,6 +255,10 @@ function land(outcome) {
     G.clears += 1;
     G.lastPoints = POINTS_PER_CLEAR + (G.streak > 1 ? STREAK_BONUS : 0);
     G.score += G.lastPoints;
+    if (G.score >= rewards.scoreNeeded(G.char) && rewards.unlock(G.char)) {
+      G.toast = { text: `🎬 ${G.char.name.toUpperCase()}'S BONUS VIDEO UNLOCKED!`, t: 0 };
+      sfx.highScore();
+    }
     G.outcome = 'clear';
     G.manMood = 'relieved';
     sfx.clear();
@@ -302,6 +316,7 @@ function render() {
     if (G.screen === 'over') renderOver();
   }
   ctx.restore();
+  renderToast();
   photobomb.draw(ctx, view);   // on top of everything, not shaken
 }
 
@@ -333,6 +348,15 @@ function renderSelect() {
     text(ctx, c.ch.name, c.x + c.w / 2, c.y + 238, { size: 28, color: '#fff', weight: '900' });
     statBar(ctx, c.x + 18, c.y + 278, c.w - 36, 'WEIGHT', (c.ch.weight - 0.7) / 0.6);
     statBar(ctx, c.x + 18, c.y + 304, c.w - 36, 'SIZE', (c.ch.size - 0.75) / 0.5);
+    const b = badgeOf(c);
+    if (rewards.isUnlocked(c.ch)) {
+      button(ctx, b, '🎬', { color: '#ffcc00', size: 20 });
+    } else {
+      text(ctx, `🔒 ${rewards.scoreNeeded(c.ch)}`, b.x + b.w - 2, b.y + b.h / 2, { size: 14, color: 'rgba(255,255,255,0.55)', align: 'right', weight: '800' });
+    }
+  }
+  if (CARDS.some(c => rewards.isUnlocked(c.ch))) {
+    text(ctx, 'Tap 🎬 to watch a bonus video', W / 2, 478, { size: 16, color: '#ffe066', stroke: '#1a1a3a', strokeW: 5, weight: '800' });
   }
 }
 
@@ -423,6 +447,32 @@ function renderOver() {
   text(ctx, hs, SIDE.cx, 262, { size: 26, color: '#ffe066', weight: '900', ...sh });
   button(ctx, BTN_RETRY, 'TRY AGAIN', { size: 28 });
   button(ctx, BTN_CHARS, 'CHANGE JUMPER', { color: '#cfd8ff', size: 18 });
+  if (rewards.isUnlocked(G.char)) {
+    button(ctx, BTN_BONUS, `🎬 ${G.char.name.toUpperCase()}'S BONUS`, { color: '#ff9f1a', size: 17 });
+  } else {
+    text(ctx, `Score ${rewards.scoreNeeded(G.char)} in one run`, SIDE.cx, 422, { size: 14, color: '#cfd8ff', weight: '700', ...sh });
+    text(ctx, `to unlock ${G.char.name}'s bonus video 🎬`, SIDE.cx, 441, { size: 14, color: '#cfd8ff', weight: '700', ...sh });
+  }
+}
+
+// "BONUS VIDEO UNLOCKED!" banner
+function renderToast() {
+  if (!G.toast) return;
+  const t = G.toast.t;
+  const a = Math.min(1, t * 4, (3.2 - t) * 3);
+  const pop = 1 + Math.max(0, 0.25 - t) * 1.2;
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, a);
+  ctx.translate(W / 2, 196);
+  ctx.scale(pop, pop);
+  ctx.font = '900 24px "Trebuchet MS", system-ui, sans-serif';
+  const w = ctx.measureText(G.toast.text).width + 48;
+  ctx.fillStyle = '#ffcc00';
+  ctx.strokeStyle = '#1a1a3a';
+  ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.roundRect(-w / 2, -26, w, 52, 26); ctx.fill(); ctx.stroke();
+  text(ctx, G.toast.text, 0, 1, { size: 24, color: '#1a1a3a', weight: '900' });
+  ctx.restore();
 }
 
 // ---------- main loop ----------
@@ -442,4 +492,5 @@ window.__hj = {
   get state() { return { screen: G.screen, phase: G.phase, outcome: G.outcome, score: G.score, streak: G.streak, high: G.high }; },
   force(s, a) { G.forced = s == null ? null : { s, a }; },
   photobomb,
+  rewards,
 };

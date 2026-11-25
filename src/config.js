@@ -72,6 +72,15 @@ export const PHOTOBOMB = {
   positions: { bottomX: 250, topX: 420, sideY: 300 }, // where along each edge she appears
 };
 
+// Bonus video rewards (src/rewards.js). Score this much in ONE run with a
+// character to unlock their video (saved on each phone). Videos go in
+// assets/rewards/ named after the character id: ashley.mp4, jeff.mp4, bj.mp4, jr.mp4.
+// A character can override with rewardScore: 800 or rewardVideo: 'assets/rewards/x.mp4'.
+export const REWARDS = {
+  score: 500,
+  dir: 'assets/rewards',
+};
+
 // Bob's two sprites. dx = horizontal offset from MAN.start; w/h = drawn size.
 export const MAN_SPRITES = {
   chill: { src: 'assets/dad_chill.png', dx: 0, w: 200, h: 85.4 },
